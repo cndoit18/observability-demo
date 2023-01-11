@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,7 +11,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
@@ -41,12 +40,8 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	l := log.New(os.Stdout, "", 0)
-	f, err := os.Create("traces.txt")
-	if err != nil {
-		l.Fatal(err)
-	}
-	defer f.Close()
-	exp, err := newExporter(f)
+
+	exp, err := jaeger.New(jaeger.WithCollectorEndpoint())
 	if err != nil {
 		l.Fatal(err)
 	}
@@ -69,17 +64,6 @@ func main() {
 
 	// And start the HTTP serve.
 	log.Fatal(http.ListenAndServe(":3030", nil))
-}
-
-// newExporter returns a console exporter.
-func newExporter(w io.Writer) (trace.SpanExporter, error) {
-	return stdouttrace.New(
-		stdouttrace.WithWriter(w),
-		// Use human-readable output.
-		stdouttrace.WithPrettyPrint(),
-		// Do not print timestamps for the demo.
-		stdouttrace.WithoutTimestamps(),
-	)
 }
 
 func newResource() *resource.Resource {
